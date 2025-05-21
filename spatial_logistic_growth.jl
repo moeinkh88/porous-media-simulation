@@ -135,49 +135,56 @@ end
 
 
 # Visualization helper
-function plot_agents(agents, step, pop_hist)
-    x = [a.x for a in agents]
-    y = [a.y for a in agents]
-    plt = scatter(x, y; xlims=(1, grid_size), ylims=(1, grid_size), 
-        title="Step $step - Population: $(length(agents))", 
-        markersize=7, legend=false, aspect_ratio=:equal, c=:blue)
-    return plt
-end
+myColor = :royalblue2
+
 
 # --- Main simulation ---
-function simulate()
+function simulate_side_by_side_gif()
     agents = Agent[]
     grid = empty_grid(grid_size)
     place_agents!(agents, grid, initial_population)
     pop_hist = Int[]
     anim = @animate for step in 1:max_steps
-        # Movement
+        # Move
         for agent in shuffle(rng, agents)
             move_agent!(agent, grid)
         end
-        # Reproduction (logistic prob)
         N = length(agents)
         p_birth = r * (1 - N / carrying_capacity)
         new_agents = Agent[]
-        radius = 2   # mating/neighborhood radius
-        alpha = .1
-        
+        radius = 2
+        alpha = 0.1
         for agent in agents
             reproduce_sexual!(agent, new_agents, grid, p_birth, agents, radius, alpha)
         end
-        
         append!(agents, new_agents)
         push!(pop_hist, length(agents))
-        plot_agents(agents, step, pop_hist)
+        
+        # Prepare plot with two panels **from the start**
+        plt = plot(layout = (1,2), size = (800,400))
+        
+        # Panel 1: Agents on grid
+        x = [a.x for a in agents]
+        y = [a.y for a in agents]
+        scatter!(plt[1], x, y;
+            xlims=(1, grid_size), ylims=(1, grid_size),
+            markersize=5, color=myColor, legend=false,
+            aspect_ratio=:equal,
+            title="Time step $step, Population: $(length(agents))",
+            xlabel="x", ylabel="y"
+        )
+        # Panel 2: Population plot
+        plot!(plt[2], 1:step, pop_hist[1:step];
+            lw=2, color=myColor, label="Population",
+            xlims=(1, max_steps), ylims=(0, carrying_capacity),
+            xlabel="Time step", ylabel="Population",
+            title="Population Dynamics"
+        )
+        plt
     end
     return pop_hist, anim
 end
 
-# Run the simulation!
-pop_hist, anim = simulate()
-
-# Save gif (requires ffmpeg)
-gif(anim, "logistic_population.gif", fps=10)
-
-# Plot population dynamics
-plot(1:length(pop_hist), pop_hist, xlabel="Step", ylabel="Population", label="Population", lw=2, legend=true, title="Population Dynamics (Logistic Growth)")
+# Run!
+pop_hist, anim = simulate_side_by_side_gif()
+gif(anim, "images/logistic_side_by_side.gif", fps=10)

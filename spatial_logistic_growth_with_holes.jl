@@ -149,21 +149,22 @@ function reproduce_sexual!(agent, agents, grid, blocked, p_birth, all_agents, ra
 end
 
 # --- Plotting with Obstacles ---
+myColor = [:royalblue2 :tomato]
 function plot_agents(agents, step, pop_hist, blocked)
     x = [a.x for a in agents]
     y = [a.y for a in agents]
     xb = [i for (i, j) in blocked]
     yb = [j for (i, j) in blocked]
-    plt = scatter(x, y; xlims=(1, grid_size), ylims=(1, grid_size), title="Step $step - Population: $(length(agents))",
-                  markersize=7, legend=false, aspect_ratio=:equal, c=:blue, grid=false)
+    plt = scatter(x, y; xlims=(1, grid_size), ylims=(1, grid_size), title="Time step $step,  Population: $(length(agents))",
+                  markersize=5, legend=false, aspect_ratio=:equal, c=myColor[2], grid=false)
     if !isempty(xb)
-        scatter!(xb, yb; markercolor=:red, markersize=10, alpha=0.4, markerstrokewidth=0)
+        scatter!(xb, yb; markercolor=:black, markersize=5, alpha=0.7, markerstrokewidth=0, marker=:rect)
     end
     return plt
 end
 
 # --- Main simulation ---
-function simulate_with_obstacles()
+function simulate_with_obstacles_side_by_side()
     agents = Agent1[]
     grid = empty_grid(grid_size, blocked)
     place_agents!(agents, grid, initial_population)
@@ -179,25 +180,35 @@ function simulate_with_obstacles()
         new_agents = Agent1[]
         radius = 2
         alpha = 0.1
-
         for agent in agents
             reproduce_sexual!(agent, new_agents, grid, blocked, p_birth, agents, radius, alpha)
         end
-
         append!(agents, new_agents)
         push!(pop_hist, length(agents))
-        plot_agents(agents, step, pop_hist, blocked)
+
+        # --- Panel 1: Agents + obstacles ---
+        x = [a.x for a in agents]
+        y = [a.y for a in agents]
+        xb = [i for (i, j) in blocked]
+        yb = [j for (i, j) in blocked]
+        plt = plot(layout = (1,2), size = (850,400))
+        scatter!(plt[1], x, y; xlims=(1, grid_size), ylims=(1, grid_size), 
+            markersize=5, color=myColor[2], legend=false, 
+            aspect_ratio=:equal, grid=false,
+            title="Step $step, Population: $(length(agents))", xlabel="x", ylabel="y")
+        if !isempty(xb)
+            scatter!(plt[1], xb, yb; markercolor=:black, markersize=5, alpha=0.7, markerstrokewidth=0, marker=:rect)
+        end
+        # --- Panel 2: Population curve ---
+        plot!(plt[2], 1:step, pop_hist[1:step], lw=2, color=:firebrick1, label="Population",
+            xlims=(1, max_steps), ylims=(0, carrying_capacity),
+            xlabel="Time Step", ylabel="Population",
+            title="Population Dynamics")
+        plt
     end
     return pop_hist, anim
 end
 
-# --- Run simulation ---
-pop_hist, anim = simulate_with_obstacles()
-
-# --- Save gif ---
-gif(anim, "logistic_population_with_blocks.gif", fps=10)
-
-# --- Plot population curve ---
-plot(1:length(pop_hist), pop_hist, xlabel="Step", ylabel="Population",
-     label="Population", lw=2, legend=true,
-     title="Population Dynamics (With Obstacles)")
+# --- Run side-by-side simulation ---
+pop_hist, anim = simulate_with_obstacles_side_by_side()
+gif(anim, "images/logistic_population_with_blocks_side_by_side.gif", fps=10)
